@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
+import type { NightDigest } from '../src/digest/types.js';
 
 const night = '2026-10-28';
 const config = (runsDir: string) => ({
@@ -11,6 +12,18 @@ const config = (runsDir: string) => ({
   beatEverySeconds: 60,
   runsDir,
 });
+
+function tableRows(html: string) {
+  const body = html.match(/<tbody>(.*?)<\/tbody>/s)?.[1];
+  if (!body) throw new Error('digest table body was not rendered');
+
+  return [...body.matchAll(/<tr>(.*?)<\/tr>/gs)].map(([, row]) =>
+    [...row.matchAll(/<td(?: class="([^"]*)")?>(.*?)<\/td>/gs)].map(([, className, content]) => ({
+      className: className ?? '',
+      text: content,
+    })),
+  );
+}
 
 describe('digest routes', () => {
   let runsDir: string;
@@ -42,7 +55,7 @@ describe('digest routes', () => {
       app.request(`/api/digest/${night}`),
     ]);
     const html = await htmlResponse.text();
-    const digest = await jsonResponse.json();
+    const digest = await jsonResponse.json() as NightDigest;
 
     expect(htmlResponse.status).toBe(200);
     expect(jsonResponse.status).toBe(200);
@@ -62,14 +75,25 @@ describe('digest routes', () => {
       ],
     });
 
-    expect(html.indexOf('alpha')).toBeGreaterThan(-1);
-    expect(html.indexOf('alpha')).toBeLessThan(html.indexOf('zeta'));
-    expect(html).toContain('—');
-    expect(html).toContain('3');
-    expect(html).toContain('still down');
-    expect(html).toContain('fail');
-    expect(html).toContain('2026-10-29T01:00:00-04:00');
-    expect(html).toContain('2026-10-29T01:40:00-04:00');
+    const rows = tableRows(html);
+    expect(rows.map((row) => row[0].text)).toEqual(digest.rows.map((row) => row.job));
+    expect(rows).toEqual(digest.rows.map((row) => [
+      { className: '', text: row.job },
+      { className: '', text: row.owner ?? '—' },
+      { className: '', text: String(row.runs) },
+      { className: row.retries >= 3 ? 'warn' : '', text: String(row.retries) },
+      { className: row.failures > 0 ? 'warn' : '', text: String(row.failures) },
+      { className: row.failures > 0 ? 'warn' : '', text: row.lastStatus },
+      { className: '', text: row.lastError ?? '—' },
+      { className: '', text: row.firstAt },
+      { className: '', text: row.lastAt },
+    ]));
+
+    const [alpha, zeta] = rows;
+    expect(alpha[3]).toEqual({ className: 'warn', text: '3' });
+    expect(alpha[4]).toEqual({ className: 'warn', text: '1' });
+    expect(alpha[5]).toEqual({ className: 'warn', text: 'ok' });
+    expect(zeta.every((cell) => cell.className === '')).toBe(true);
   });
 
   it('returns 404 from both routes when a night file is missing', async () => {
@@ -100,7 +124,7 @@ describe('digest routes', () => {
   it('returns 404 for malformed night identifiers', async () => {
     const app = createApp(config(runsDir));
     const [htmlResponse, jsonResponse] = await Promise.all([
-      app.request('/digest/2026-02-30'),
+      app.request('/digest/not-a-date'),
       app.request('/api/digest/not-a-date'),
     ]);
 
