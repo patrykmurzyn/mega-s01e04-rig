@@ -5,7 +5,6 @@ import { readStatus } from './status.js';
 import { readNight } from './digest/read-night.js';
 import { Layout } from './views/layout.js';
 import { StatusBoard } from './views/status.js';
-import { readNight } from './digest/read-night.js';
 import { DigestPage } from './views/digest.js';
 
 export function createApp(config: RigConfig = loadConfig()) {
