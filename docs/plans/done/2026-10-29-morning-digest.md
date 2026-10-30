@@ -1,8 +1,9 @@
 ---
 plan: morning-digest
-status: ready
+status: done
 owner: rook
 opened: 2026-10-29
+closed: 2026-10-30
 ---
 
 # Morning digest
@@ -77,3 +78,20 @@ page again with `LANE_MARKER` unset (the banner reads "no marker set") and uploa
 link. Move this plan to `docs/plans/done/` with its issue list.
 
 Done when: the preview link no longer shows the lane marker.
+
+
+## Issue history and completion record
+
+Closed: 2026-10-30 (Warsaw). The seven issues created from this plan:
+
+| Issue | Work | Worker · model · effort | Provenance / verification |
+| --- | --- | --- | --- |
+| [#1](https://github.com/patrykmurzyn/mega-s01e04-rig/issues/1) | Read and aggregate the nightly run log | reader · gpt-6-astra · high | Commits `e2172f0`, `8b16a82` |
+| [#2](https://github.com/patrykmurzyn/mega-s01e04-rig/issues/2) | Render the digest page | page · gpt-6-luna · low | Commit `df285dc` |
+| [#3](https://github.com/patrykmurzyn/mega-s01e04-rig/issues/3) | Serve the digest as JSON | json · gpt-6-luna · low | Commits `1b82387`, integration correction `1654e28` |
+| [#4](https://github.com/patrykmurzyn/mega-s01e04-rig/issues/4) | Link board nights to their digests | board · gpt-6-luna · low | Commit `6b8db60` |
+| [#5](https://github.com/patrykmurzyn/mega-s01e04-rig/issues/5) | Test the digest routes | route_tests · gpt-6-luna · low | Commits `dddd483`, `33d8350`; test suite and typecheck passed |
+| [#6](https://github.com/patrykmurzyn/mega-s01e04-rig/issues/6) | Publish and submit the review preview | preview · gpt-6-luna · low | Preview generated from `1654e28`; no new commit. The course initially refused the claim because #6 had been closed before review; #6 was reopened and the preview resubmitted. The course confirmed the actual review in claim06; it was the prerequisite for cleanup. |
+| [#7](https://github.com/patrykmurzyn/mega-s01e04-rig/issues/7) | Remove the public lane marker after review | Codex · gpt-6-luna · low | After the student authorized recovery and a new public tunnel, the replacement preview at [https://pod-councils-advertisements-nano.trycloudflare.com/](https://pod-councils-advertisements-nano.trycloudflare.com/) returned HTTP 200, 2289 bytes, SHA-256 `d4850db610765734f0a33b57f6eb16c895aa45d773d89028c809e36306cca79c`, matching the verified local export; the marker is absent and “no marker set” is present. Worker Codex · gpt-6-luna · low. Commit recorded in the issue closing comment. |
+
+The reviewer actually saw the original preview (course claim06 confirmed review). Before cleanup could be performed, the original tunnel ended and its URL `https://produces-cup-polar-funny.trycloudflare.com/` returned a DNS failure; the cause of the tunnel ending is unknown. With the student's explicit authorization to recover by publishing a new tunnel and sharing its URL, the unmarked preview was served at `https://pod-councils-advertisements-nano.trycloudflare.com/` and verified at HTTP 200 with the exact local export bytes. The original same-URL requirement could not be maintained after the old URL expired. Course acceptance of this recovery and replacement URL is still pending; no acceptance is claimed here. See `notes/tunnel-expiry-01.json`, `notes/published-preview-02.json`, and `responses/cloudflare-quick-tunnel-02.json` for evidence.
