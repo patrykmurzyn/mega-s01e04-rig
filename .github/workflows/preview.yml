@@ -1,0 +1,90 @@
+name: Preview digest
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        run: npm install --global pnpm@10.20.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare Pages
+        uses: actions/configure-pages@v6.0.0
+
+      - name: Render digest without a lane marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          site_dir="$RUNNER_TEMP/site"
+          mkdir -p "$site_dir"
+          server_log="$RUNNER_TEMP/rig-server.log"
+
+          env -u LANE_MARKER LANE_ID=lane-07 PORT=8787 pnpm exec tsx src/server.ts >"$server_log" 2>&1 &
+          server_pid=$!
+          cleanup() {
+            kill "$server_pid" 2>/dev/null || true
+            wait "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8787/ >/dev/null; then
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat "$server_log"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          curl --fail --silent --show-error \
+            http://127.0.0.1:8787/digest/2026-10-28 \
+            --output "$site_dir/index.html"
+
+          node --input-type=module - "$site_dir/index.html" <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const html = await readFile(process.argv[2], 'utf8');
+          const checks = {
+            noMarkerSet: html.includes('no marker set'),
+            fiveJobRows: (html.match(/<tr\b/g) ?? []).length - 1 === 5,
+            selfContained: /<style\b/i.test(html) && !/<script\b/i.test(html) && !/(?:src|href)=["']https?:\/\//i.test(html),
+          };
+          console.log(JSON.stringify(checks));
+          if (!Object.values(checks).every(Boolean)) process.exit(1);
+          NODE
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: ${{ runner.temp }}/site
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5.0.1
